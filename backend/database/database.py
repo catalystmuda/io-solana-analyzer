@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime
 
 
 class Database:
@@ -18,6 +19,8 @@ class Database:
         CREATE TABLE IF NOT EXISTS tokens (
 
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            received_at TEXT,
 
             signature TEXT,
 
@@ -42,6 +45,7 @@ class Database:
             uri TEXT,
 
             pool TEXT
+
         )
         """)
 
@@ -49,11 +53,14 @@ class Database:
 
     def save_token(self, token):
 
+        received_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         try:
 
             self.cursor.execute("""
-            INSERT OR IGNORE INTO tokens(
+            INSERT OR IGNORE INTO tokens (
 
+                received_at,
                 signature,
                 mint,
                 name,
@@ -67,9 +74,10 @@ class Database:
                 uri,
                 pool
 
-            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
 
+                received_at,
                 token["signature"],
                 token["mint"],
                 token["name"],
@@ -91,4 +99,8 @@ class Database:
 
         except Exception as e:
 
-            print(e)
+            print(f"[Database Error] {e}")
+
+    def close(self):
+
+        self.conn.close()
