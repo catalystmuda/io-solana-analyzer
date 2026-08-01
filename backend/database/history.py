@@ -5,13 +5,29 @@ class HistoryDatabase:
 
     def __init__(self):
 
-        self.conn = sqlite3.connect("tokens.db")
+        self.conn = sqlite3.connect(
+            "backend/database/tokens.db",
+            check_same_thread=False
+        )
+
         self.cursor = self.conn.cursor()
+
+    # ==========================================
+    # Total Token
+    # ==========================================
 
     def total_tokens(self):
 
-        self.cursor.execute("SELECT COUNT(*) FROM tokens")
+        self.cursor.execute("""
+            SELECT COUNT(*)
+            FROM tokens
+        """)
+
         return self.cursor.fetchone()[0]
+
+    # ==========================================
+    # Total Creator
+    # ==========================================
 
     def total_creators(self):
 
@@ -19,7 +35,12 @@ class HistoryDatabase:
             SELECT COUNT(DISTINCT creator)
             FROM tokens
         """)
+
         return self.cursor.fetchone()[0]
+
+    # ==========================================
+    # Total Mint
+    # ==========================================
 
     def total_mints(self):
 
@@ -27,7 +48,12 @@ class HistoryDatabase:
             SELECT COUNT(DISTINCT mint)
             FROM tokens
         """)
+
         return self.cursor.fetchone()[0]
+
+    # ==========================================
+    # Duplicate Records
+    # ==========================================
 
     def duplicate_tokens(self):
 
@@ -35,22 +61,31 @@ class HistoryDatabase:
             SELECT COUNT(*) - COUNT(DISTINCT mint)
             FROM tokens
         """)
+
         return self.cursor.fetchone()[0]
+
+    # ==========================================
+    # Latest Tokens
+    # ==========================================
 
     def latest_tokens(self, limit=10):
 
         self.cursor.execute("""
             SELECT
-                received_at,
+                created_at,
                 symbol,
                 creator,
                 market_cap_sol
             FROM tokens
-            ORDER BY id DESC
+            ORDER BY created_at DESC
             LIMIT ?
         """, (limit,))
 
         return self.cursor.fetchall()
+
+    # ==========================================
+    # Close
+    # ==========================================
 
     def close(self):
 

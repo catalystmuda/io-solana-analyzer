@@ -1,50 +1,45 @@
 import sqlite3
-from datetime import datetime
 
 
 class Database:
 
     def __init__(self):
 
-        print("[Database] Ready")
-
-        self.conn = sqlite3.connect("tokens.db")
-        self.cursor = self.conn.cursor()
+        self.conn = sqlite3.connect(
+            "backend/database/tokens.db",
+            check_same_thread=False
+        )
 
         self.create_table()
 
+        print("[Database] Ready")
+
     def create_table(self):
 
-        self.cursor.execute("""
+        cursor = self.conn.cursor()
+
+        cursor.execute("""
         CREATE TABLE IF NOT EXISTS tokens (
 
             id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-            received_at TEXT,
-
             signature TEXT,
-
-            mint TEXT UNIQUE,
-
+            mint TEXT,
             name TEXT,
-
             symbol TEXT,
-
             creator TEXT,
 
             tx_type TEXT,
 
             initial_buy REAL,
-
             sol_amount REAL,
-
             market_cap_sol REAL,
 
             bonding_curve TEXT,
-
             uri TEXT,
+            pool TEXT,
 
-            pool TEXT
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
         )
         """)
@@ -53,53 +48,72 @@ class Database:
 
     def save_token(self, token):
 
-        received_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor = self.conn.cursor()
 
-        try:
+        # -----------------------------
+        # Jangan simpan jika mint sudah ada
+        # -----------------------------
 
-            self.cursor.execute("""
-            INSERT OR IGNORE INTO tokens (
+        cursor.execute(
+            "SELECT id FROM tokens WHERE mint = ?",
+            (token["mint"],)
+        )
 
-                received_at,
-                signature,
-                mint,
-                name,
-                symbol,
-                creator,
-                tx_type,
-                initial_buy,
-                sol_amount,
-                market_cap_sol,
-                bonding_curve,
-                uri,
-                pool
+        exists = cursor.fetchone()
 
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
+        if exists:
 
-                received_at,
-                token["signature"],
-                token["mint"],
-                token["name"],
-                token["symbol"],
-                token["creator"],
-                token["tx_type"],
-                token["initial_buy"],
-                token["sol_amount"],
-                token["market_cap_sol"],
-                token["bonding_curve"],
-                token["uri"],
-                token["pool"]
+            print(f"[Database] Skip Duplicate : {token['symbol']}")
 
-            ))
+            return
 
-            self.conn.commit()
+        # -----------------------------
+        # Simpan Token Baru
+        # -----------------------------
 
-            print(f"[Database] Saved : {token['symbol']}")
+        cursor.execute("""
+        INSERT INTO tokens (
 
-        except Exception as e:
+            signature,
+            mint,
+            name,
+            symbol,
+            creator,
+            tx_type,
+            initial_buy,
+            sol_amount,
+            market_cap_sol,
+            bonding_curve,
+            uri,
+            pool
 
-            print(f"[Database Error] {e}")
+        )
+
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+
+            token["signature"],
+            token["mint"],
+            token["name"],
+            token["symbol"],
+            token["creator"],
+            token["tx_type"],
+            token["initial_buy"],
+            token["sol_amount"],
+            token["market_cap_sol"],
+            token["bonding_curve"],
+            token["uri"],
+            token["pool"]
+
+        ))
+
+        self.conn.commit()
+
+        cursor.execute("SELECT COUNT(*) FROM tokens")
+
+        total = cursor.fetchone()[0]
+
+        print(f"[Database] Saved : {token['symbol']} | Total Dataset : {total}")
 
     def close(self):
 

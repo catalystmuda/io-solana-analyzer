@@ -1,4 +1,16 @@
+# Python
 __pycache__/
 *.pyc
+
+# Virtual Environment
+.venv/
+venv/
+
+# Environment
 .env
-.vscode/settings.json
+
+# Database
+*.db
+
+# VS Code
+.vscode/
