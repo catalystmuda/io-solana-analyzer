@@ -5,6 +5,7 @@ import sqlite3
 class CreatorReliability:
 
 
+
     def __init__(self):
 
         self.conn = sqlite3.connect(
@@ -15,25 +16,21 @@ class CreatorReliability:
 
 
 
-    # ======================================
-    # Calculate Reliability
-    # ======================================
+    # =====================================
+    # ANALYZE CREATOR RELIABILITY
+    # =====================================
 
-    def calculate(self, creator):
+    def analyze(self, creator):
 
 
         self.cursor.execute(
             """
             SELECT
-
                 COUNT(*),
                 MAX(market_cap_sol),
                 AVG(market_cap_sol)
-
             FROM tokens
-
             WHERE creator = ?
-
             """,
             (creator,)
         )
@@ -42,110 +39,152 @@ class CreatorReliability:
         row = self.cursor.fetchone()
 
 
-        if not row:
+
+        if row is None or row[0] == 0:
 
             return None
 
 
 
-        total_token = row[0] or 0
+        total_token = row[0]
+
         highest_mc = row[1] or 0
-        avg_mc = row[2] or 0
+
+        average_mc = row[2] or 0
 
 
 
-        score = 0
-
-
-
-        # =========================
+        # ===============================
         # HISTORY SCORE
-        # =========================
+        # ===============================
 
-        if total_token >= 100:
+        history_score = 0
 
-            history = 30
 
-        elif total_token >= 50:
+        if total_token >= 50:
 
-            history = 25
+            history_score = 30
 
-        elif total_token >= 20:
+        elif total_token >= 10:
 
-            history = 20
-
-        elif total_token >= 5:
-
-            history = 10
+            history_score = 20
 
         else:
 
-            history = 3
+            history_score = 10
 
 
 
-        score += history
-
-
-
-        # =========================
+        # ===============================
         # BREAKOUT SCORE
-        # =========================
+        # ===============================
 
-        if highest_mc >= 1000:
+        self.cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM tokens
+            WHERE creator = ?
+            AND market_cap_sol >= 500
+            """,
+            (creator,)
+        )
 
-            breakout = 40
 
-        elif highest_mc >= 500:
-
-            breakout = 30
-
-        elif highest_mc >= 100:
-
-            breakout = 20
-
-        elif highest_mc >= 50:
-
-            breakout = 10
-
-        else:
-
-            breakout = 0
+        breakout = self.cursor.fetchone()[0]
 
 
 
-        score += breakout
+        breakout_score = 0
+
+
+        if breakout >= 3:
+
+            breakout_score = 40
+
+
+        elif breakout >= 1:
+
+            breakout_score = 25
 
 
 
-        # =========================
-        # CONSISTENCY SCORE
-        # =========================
+        # ===============================
+        # CONSISTENCY
+        # ===============================
+
+        consistency = 0
 
 
-        if avg_mc >= 100:
+        if average_mc >= 100:
 
             consistency = 30
 
-        elif avg_mc >= 50:
+
+        elif average_mc >= 50:
 
             consistency = 20
 
-        elif avg_mc >= 30:
-
-            consistency = 10
 
         else:
 
-            consistency = 0
+            consistency = 10
 
 
 
-        score += consistency
+        reliability_score = (
+
+            history_score +
+
+            breakout_score +
+
+            consistency
+
+        )
+
+
+
+        reliability_score = min(
+            reliability_score,
+            100
+        )
+
+
+
+        reasons = []
+
+
+
+        if breakout == 0:
+
+            reasons.append(
+                "Belum ada breakout token"
+            )
+
+
+        if average_mc < 100:
+
+            reasons.append(
+                "Average marketcap rendah"
+            )
+
+
+        if total_token < 5:
+
+            reasons.append(
+                "Limited creator history"
+            )
+
+
+        if not reasons:
+
+            reasons.append(
+                "Creator reliability positif"
+            )
 
 
 
         return {
+
 
             "creator": creator,
 
@@ -153,17 +192,23 @@ class CreatorReliability:
 
             "highest_mc": highest_mc,
 
-            "avg_mc": avg_mc,
+            "average_mc": average_mc,
 
-            "history_score": history,
+            "reliability_score":
+            reliability_score,
 
-            "breakout_score": breakout,
-
-            "consistency_score": consistency,
-
-            "reliability_score": min(score,100)
+            "reasons": reasons
 
         }
+
+
+
+
+    def calculate(self, creator):
+
+        return self.analyze(
+            creator
+        )
 
 
 
@@ -175,9 +220,9 @@ class CreatorReliability:
 
 
 
-# ======================================
-# TEST MODE
-# ======================================
+# =====================================
+# TEST
+# =====================================
 
 
 if __name__ == "__main__":
@@ -189,10 +234,10 @@ if __name__ == "__main__":
 
 
 
-    analyzer = CreatorReliability()
+    engine = CreatorReliability()
 
 
-    result = analyzer.calculate(
+    result = engine.analyze(
         creator
     )
 
@@ -201,59 +246,50 @@ if __name__ == "__main__":
     print()
 
     print("==============================")
-    print("CREATOR RELIABILITY")
+    print(" CREATOR RELIABILITY ")
     print("==============================")
 
 
-    if result is None:
+    print(
+        f"Creator          : {result['creator']}"
+    )
+
+
+    print(
+        f"Total Token      : {result['total_token']}"
+    )
+
+
+    print(
+        f"Highest MC       : {result['highest_mc']:.2f}"
+    )
+
+
+    print(
+        f"Average MC       : {result['average_mc']:.2f}"
+    )
+
+
+    print("--------------------------------")
+
+
+    print(
+        f"Reliability      : {result['reliability_score']}/100"
+    )
+
+
+    print("--------------------------------")
+
+    print("REASONS")
+
+
+    for r in result["reasons"]:
 
         print(
-            "Creator tidak ditemukan"
-        )
-
-
-    else:
-
-
-        print(
-            f"Creator          : {result['creator']}"
-        )
-
-        print(
-            f"Total Token      : {result['total_token']}"
-        )
-
-        print(
-            f"Highest MC       : {result['highest_mc']:.2f}"
-        )
-
-        print(
-            f"Average MC       : {result['avg_mc']:.2f}"
-        )
-
-
-        print("--------------------------------")
-
-        print(
-            f"History Score    : {result['history_score']}/30"
-        )
-
-        print(
-            f"Breakout Score   : {result['breakout_score']}/40"
-        )
-
-        print(
-            f"Consistency      : {result['consistency_score']}/30"
-        )
-
-
-        print("--------------------------------")
-
-
-        print(
-            f"Reliability      : {result['reliability_score']}/100"
+            "-",
+            r
         )
 
 
 
-    analyzer.close()
+    engine.close()
