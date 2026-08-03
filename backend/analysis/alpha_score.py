@@ -10,10 +10,11 @@ ORDER BY market_cap_sol DESC
 """).fetchall()
 
 print("=" * 70)
-print("FINAL ALPHA SCORE V12")
+print("IO SOLANA ANALYZER v1.0")
 print("=" * 70)
 
 shown_creator = set()
+shown_token = set()
 
 for row in rows:
 
@@ -22,7 +23,16 @@ for row in rows:
     if creator in shown_creator:
         continue
 
+    name = (row["name"] or "").strip().lower()
+    symbol = (row["symbol"] or "").strip().lower()
+
+    token_key = (name, symbol)
+
+    if token_key in shown_token:
+        continue
+
     shown_creator.add(creator)
+    shown_token.add(token_key)
 
     memory = conn.execute("""
     SELECT *
@@ -35,7 +45,6 @@ for row in rows:
 
     total = memory["total_tokens"]
 
-    # creator spam
     if total > 10:
         continue
 
@@ -61,12 +70,11 @@ for row in rows:
         continue
 
     print()
-    print("NAME      :", row["name"])
-    print("SYMBOL    :", row["symbol"])
-    print("TOTALTOK  :", total)
-    print("MC        :", round(row["market_cap_sol"],2))
-    print("BUY       :", round(row["sol_amount"],2))
-    print("REP       :", rep)
-    print("FINAL     :", round(score,2))
+    print("NAME   :", row["name"])
+    print("SYMBOL :", row["symbol"])
+    print("MC     :", round(row["market_cap_sol"], 2))
+    print("BUY    :", round(row["sol_amount"], 2))
+    print("REP    :", rep)
+    print("FINAL  :", round(score, 2))
 
 conn.close()
