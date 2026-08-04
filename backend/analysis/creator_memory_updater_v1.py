@@ -18,46 +18,49 @@ def main():
     for (creator,) in creators:
 
         rows = cur.execute("""
-            SELECT
-                market_cap_sol
+            SELECT market_cap_sol
             FROM tokens
             WHERE creator=?
         """, (creator,)).fetchall()
 
-        if not rows:
-            continue
+        mc = [r[0] for r in rows if r[0] is not None]
 
-        mc = [x[0] for x in rows if x[0] is not None]
-
-        if not mc:
+        if len(mc) == 0:
             continue
 
         total_tokens = len(mc)
+
         highest_mc = max(mc)
-        average_mc = sum(mc) / len(mc)
+
+        average_mc = sum(mc) / total_tokens
 
         breakout = len([x for x in mc if x >= 100])
+
         survivor = len([x for x in mc if x >= 50])
 
-        reputation = min(
-            100,
-            breakout * 20 + survivor * 5
+        # -------------------------
+        # NEW REPUTATION FORMULA
+        # -------------------------
+
+        success_rate = breakout / total_tokens
+
+        reputation = (
+            success_rate * 70
+            + breakout * 15
+            + survivor * 5
         )
 
-        risk = max(
-            0,
-            100 - reputation
-        )
+        reputation = min(100, round(reputation, 2))
 
-        category = "NORMAL"
+        risk = round(100 - reputation, 2)
 
         if reputation >= 80:
             category = "ELITE"
-
         elif reputation >= 60:
             category = "GOOD"
-
-        elif reputation < 30:
+        elif reputation >= 40:
+            category = "NORMAL"
+        else:
             category = "RISK"
 
         cur.execute("""
